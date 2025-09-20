@@ -1,0 +1,18 @@
+{% extends "index.html" %}
+
+
+
+{% block body %}
+<h1  class="mt-5" style="text-align:center;">Dashboard</h1>
+<H2  class="mt-2"style="text-align:center;">Welcome to the Dashboard!    {{ session['username'] }}</H2>   
+
+<div class="mt-5", style="text-align:center;">
+    <input  type="button" value="Users Lookup" onclick="window.location.href='/users'"/>
+    <div class="mt-1"   style="text-align:center;">
+    <input type="button" value="Logout" onclick="window.location.href='/logout'"/>
+    </div>
+</div>
+
+ 
+
+{% endblock %} 

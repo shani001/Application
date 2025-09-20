@@ -1,0 +1,2 @@
+user=[{'username': 'shani', 'Email': 'shani@gmail.com', 'password': 'scrypt:32768:8:1$gAezxieLAxTmTDSH$379a5511e54331df93c3dd4c371aba29a9b6e6b2d49639eb986d9835564f257699c552a102b7fb35b5bba3588a0767ef5a0d1771a0a872f8b1f6ca5eb101a254', 'role': 'Admin', 'id': 'JDcP5WKVaSucW6VFpbKi'}]
+print(user[0]['role'])
