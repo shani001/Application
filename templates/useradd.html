@@ -1,0 +1,34 @@
+{% extends "index.html" %}
+
+{% block body %}
+<form method="POST">
+    {{ form.csrf_token }}
+    <div class="container mt-3",style="float:center;">
+      <h5 class="mb-2">Add User</h5>
+      
+    <form>
+        <div class="form-group">
+          <label for="formGroupExampleInput">Username</label> 
+          {{form.username( class="form-control", id="formGroupExampleInput", placeholder="Enter username")}}
+        </div>
+        <div class="form-group">
+          <label for="formGroupExampleInput2">Password</label>
+          {{form.password( class="form-control", id="formGroupExampleInput2", placeholder="Enter password")}}
+        </div>
+        <div class="form-group">
+            <label for="formGroupExampleInput3">Email</label>
+            {{form.email( class="form-control", id="formGroupExampleInput3", placeholder="Enter email")}}
+          </div>
+        <div class="form-group">
+            <label for="formGroupExampleInput4">Role</label>
+            {{form.role( class="form-control", id="formGroupExampleInput4")}}
+          </div>
+            <div class="form-group">
+                {{form.submit( class="btn btn-primary", id="formGroupExampleInput5", value="Add User")}}
+
+
+      </form>
+      
+    </div>
+</form>
+{% endblock %}

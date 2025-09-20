@@ -4,8 +4,17 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import timedelta
+from userclass import LoginForm
+from wtforms.validators import DataRequired, Length
+from firestoredbcalls import FirestoreDBCalls
+import requests
+from quixstreams import Application
+from kafka import KafkaProducer
+import time,json
+
 
 app = Flask(__name__)
+producer = KafkaProducer(bootstrap_servers='localhost:9092')
 
 cred = credentials.Certificate("cert.json") # Replace with your key file path
 firebase_admin.initialize_app(cred)
@@ -13,6 +22,7 @@ db = firestore.client()
 secure_key = "supersecretkey" # Replace with your secure key
 app.secret_key = secure_key
 app.permanent_session_lifetime=timedelta(minutes=20)
+
 @app.before_request
 def make_session_permanent():
     session.permanent = True
@@ -27,7 +37,6 @@ def getvalues(query):
     for data in query:
         username=data.to_dict()['username'] 
         password=data.to_dict()['password']
-
 
     return [username,password]
 
@@ -46,6 +55,7 @@ def checkUsernameExists(username,password):
             return False
     else:
         return False
+    
 def getrole(username):
     users_ref = db.collection('user')
     query = users_ref.where(filter=FieldFilter('username', '==', username))
@@ -73,20 +83,20 @@ def home():
 #login route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    
-    username = request.form.get('username')
-    password = request.form.get('password')
-    
-    if checkUsernameExists(username,password):
-        print(" User with role logged in successfully")
-        
-        session['username'] = username
-        session['role'] = getrole(username)
-        
-        
-        return redirect(url_for('home'))
-    else:
-        print("Username does not exist")
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if checkUsernameExists(username,password):
+            print(" User with role logged in successfully")
+
+            session['username'] = username
+            session['role'] = getrole(username)
+            data={"event":"user_login","username":username,"role":session['role'],"status":"success","source":"flask_app","timestamp":time.time() }
+            KafkaProducer.send(producer,'Login_events',json.dumps(data).encode('utf-8'))
+            return redirect(url_for('home'))
+        else:
+            print("Username does not exist")
       
     return render_template('login.html')
 
@@ -100,6 +110,7 @@ def logout():
 #Register route
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -147,19 +158,55 @@ def get_all_users():
 
 @app.route('/deleteUser', methods=['POST','GET']) # Change to POST for better practice
 def deleteUser():
-    print("Delete user endpoint hit")   
-    if request.method == 'POST':
+    print("Delete user endpoint hit")  
+
+    if request.method == 'POST' :
         data=request.get_json()
         
         print(f"Request to delete user: {data}")
         username=data.get("username")
-        print("Delete user function called")
-        ref=db.collection('user')
-        query=ref.where("username","==",username)
-        for doc in query.stream():
-            doc.reference.delete()
-            print(f"User {username} deleted successfully")
+        if username==session.get('username'):
+            print("You cannot delete your own account")
+            return "Invalid request data.", 400
+        else:
+            print("Delete user function called")
+            ref=db.collection('user')
+            query=ref.where("username","==",username)
+            for doc in query.stream():
+                doc.reference.delete()
+                print(f"User {username} deleted successfully")
+                data={"event":"user_delete","username":username,"deleted_by":session.get('username'),"status":"success","source":"flask_app","timestamp":time.time() }
+                KafkaProducer.send(producer,'userdelete',json.dumps(data).encode('utf-8'))
     return redirect(url_for('get_all_users'))
+
+
+@app.route('/adduser', methods=['GET', 'POST'])
+def adduser():
+    user=session.get('username') 
+    if user in session:
+    
+        form = LoginForm(request.form)
+        if request.method == 'POST' and form.validate():
+            username = form.username.data
+            password = form.password.data
+            role = form.role.data
+            email = form.email.data
+            submit = form.submit.data
+            print(username, password, role, email, submit)
+            hashed_password = generate_password_hash(password)  # type: ignore
+
+            doc_ref =db.collection('user').document()
+            doc_ref.set({
+                'username': username,
+                'password': hashed_password,
+                'Email': email,
+                'role': role
+            })
+            
+        
+    return render_template('useradd.html', form=form)   
+
+
 
 
 if __name__ == '__main__':
